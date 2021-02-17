@@ -9,7 +9,7 @@ replicaCount: 1
 image:
   repository: eu.gcr.io/kyma-project/incubator/fluent-bit
   pullPolicy: IfNotPresent
-  tag: 1.5.7-39280321
+  tag: 1.7.0-PR-53
 
 imagePullSecrets: []
 nameOverride: ""
@@ -189,6 +189,8 @@ config:
       multilineFlush: 4
       # Name of the parser that matchs the beginning of a multiline message.
       parserFirstline:
+      # For new discovered files on start (without a database offset/position), read the content from the head of the file, not tail.
+      readFromHead: "Off"
       exclude:
         namespaces:
     additional: ""
@@ -226,30 +228,25 @@ config:
     loki:
       enabled: true
       alias:
-      serviceName: "logging-loki"
-      servicePort: 3100
-      serviceScheme: http
-      servicePath: /loki/api/v1/push
-      config:
-        port: 2020
-        loglevel: warn
-        lineFormat: json
-        removeKeys:
-          - kubernetes
-          - stream
-        labels: '{job="fluent-bit"}'
-        labelMap:
-          kubernetes:
-            namespace_name: namespace
-            labels:
-              app: app
-              release: release
-              "serverless.kyma-project.io/function-name": function
-              "serverless.kyma-project.io/uuid": functionUID
-            host: node
-            container_name: container
-            pod_name: pod
-          stream: stream
+      match: "loki.*"
+      # Loki hostname or IP address
+      host: "logging-loki.kyma-system.svc.local"
+      # Loki TCP port
+      port: 3100
+      # Set HTTP basic authentication user name
+      httpUser:
+      # Set HTTP basic authentication password
+      httpPasswd:
+      # Tenant ID used by default to push logs to Loki. If omitted or empty it assumes Loki is running in single-tenant mode and no X-Scope-OrgID header is sent.
+      tenantId:
+      # Stream labels for API request. It can be multiple comma separated of strings specifying  key=value pairs. In addition to fixed parameters, it also allows to add custom record keys (similar to label_keys property).
+      labels: "job=fluentbit,namespace=$kubernetes['namespace_name'],app=$kubernetes['labels']['app'],release=$kubernetes['labels']['release'],node=$kubernetes['host'],container=$kubernetes['container_name'],function=$kubernetes['labels']['serverless.kyma-project.io/function-name'],functionUID=$kubernetes['labels']['serverless.kyma-project.io/uuid']"
+      # Optional list of record keys that will be placed as stream labels. This configuration property is for records key only. 
+      labelKeys: "$stream"
+      # Format to use when flattening the record to a log line. Valid values are json or key_value. If set to json,  the log line sent to Loki will be the Fluent Bit record dumped as JSON. If set to key_value, the log line will be each item in the record concatenated together (separated by a single space) in the format.
+      lineFormat: json
+      # If set to true, it will add all Kubernetes labels to the Stream labels
+      autoKubernetesLabels: "off"
     es:
       enabled: false
       alias:

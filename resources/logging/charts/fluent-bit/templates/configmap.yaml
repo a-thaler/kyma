@@ -70,6 +70,7 @@ data:
         Multiline_Flush   {{ .Values.config.inputs.tail.multilineFlush }}
         Parser_Firstline  {{ .Values.config.inputs.tail.parserFirstline }}
         {{- end }}
+        Read_from_Head    {{ .Values.config.inputs.tail.readFromHead }}
         
 {{- end }}
 
@@ -114,17 +115,22 @@ data:
         {{- if .Values.config.outputs.loki.alias }}
         Alias              {{ .Values.config.outputs.loki.alias }}
         {{- end }}
-        Match              loki.*
-        {{- if and .Values.config.outputs.loki.user .Values.config.outputs.loki.password }}
-        Url                {{ .Values.config.outputs.loki.serviceScheme }}://{{ .Values.config.outputs.loki.user }}:{{ .Values.config.outputs.loki.password }}@{{ .Values.config.outputs.loki.serviceName }}:{{ .Values.config.outputs.loki.servicePort }}{{ .Values.config.outputs.loki.servicePath }}
-        {{- else }}
-        Url                {{ .Values.config.outputs.loki.serviceScheme }}://{{ .Values.config.outputs.loki.serviceName }}:{{ .Values.config.outputs.loki.servicePort }}{{ .Values.config.outputs.loki.servicePath }}
+        Match              {{ .Values.config.outputs.loki.match }}
+        host               {{ .Values.config.outputs.loki.host }}
+        port               {{ .Values.config.outputs.loki.port }}
+        {{- if .Values.config.outputs.loki.httpUser }}
+        http_user          {{ .Values.config.outputs.loki.httpUser }}
         {{- end }}
-        Labels             {{ .Values.config.outputs.loki.config.labels }}
-        RemoveKeys         {{ include "helm-toolkit.utils.joinListWithComma" .Values.config.outputs.loki.config.removeKeys }}
-        LabelMapPath       /fluent-bit/etc/labelmap.json
-        LineFormat         {{ .Values.config.outputs.loki.config.lineFormat }}
-        LogLevel           {{ .Values.config.outputs.loki.config.loglevel }}
+        {{- if .Values.config.outputs.loki.httpPasswd }}
+        http_passwd        {{ .Values.config.outputs.loki.httpPasswd }}
+        {{- end }}
+        {{- if .Values.config.outputs.loki.tenantId }}
+        tenant_id          {{ .Values.config.outputs.loki.tenantId }}
+        {{- end }}
+        labels             {{ .Values.config.outputs.loki.labels }}
+        label_keys         {{ .Values.config.outputs.loki.labelKeys }}
+        line_format        {{ .Values.config.outputs.loki.lineFormat }}
+        auto_kubernetes_labels {{ .Values.config.outputs.loki.autoKubernetesLabels }}
 {{- end }}
 
 {{- if .Values.config.outputs.es.enabled }}
@@ -259,11 +265,6 @@ data:
 
 {{- if .Values.config.extra }}
 {{- toString .Values.config.extra | indent 4 }}
-{{- end }}
-
-{{- if .Values.config.outputs.loki.enabled }}
-  labelmap.json: |-
-    {{- .Values.config.outputs.loki.config.labelMap | toPrettyJson | nindent 4}}
 {{- end }}
 
 {{- if .Values.config.script }}
